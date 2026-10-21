@@ -1,0 +1,23 @@
+const $=s=>document.querySelector(s);
+const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+function logout(){localStorage.removeItem('rdshareSession');location.href=location.pathname.includes('/admin/')||location.pathname.includes('/user/')?'../index.html':'index.html'}
+document.addEventListener('DOMContentLoaded',()=>{
+ const login=$('#loginForm');
+ if(login) login.addEventListener('submit',e=>{e.preventDefault();const u=$('#username').value.trim(),p=$('#password').value;let role='';if(u==='admin'&&p==='admin123')role='admin';if(u==='rishit'&&p==='rishit123')role='client';if(!role){const er=$('#error-message');er.textContent='Invalid username or password!';er.style.display='block';return}write('rdshareSession',{username:u,role});location.href=role==='admin'?'admin/index.html':'user/index.html'});
+ const admin=location.pathname.includes('/admin/'),client=location.pathname.includes('/user/');
+ if(admin||client){const s=read('rdshareSession',null);if(!s||admin&&s.role!=='admin'||client&&s.role!=='client'){location.href='../index.html';return}}
+ const navs=[...document.querySelectorAll('[data-view]')];
+ function view(v){document.querySelectorAll('.view-section').forEach(x=>x.hidden=x.id!=='view-'+v);navs.forEach(x=>x.classList.toggle('active',x.dataset.view===v))}
+ navs.forEach(b=>b.addEventListener('click',()=>view(b.dataset.view)));
+ const files=()=>read('rdshareFiles',[]);
+ function size(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB'}
+ function render(){const holder=$(admin?'#adminFiles':'#clientFiles');if(!holder)return;const q=($(admin?'#adminSearch':'#fileSearch')?.value||'').toLowerCase();const list=files().filter(f=>(admin||f.owner==='rishit')&&f.name.toLowerCase().includes(q));holder.innerHTML='';if(!list.length){holder.innerHTML='<p class="empty-state">No files found yet.</p>'}list.forEach(f=>{const row=document.createElement('div');row.className='file-row';const label=document.createElement('span');label.textContent='▤  '+f.name+'  ·  '+f.size;row.append(label);const actions=document.createElement('div');const dl=document.createElement('button');dl.className='btn btn-sm btn-outline-info me-2';dl.textContent='Download';dl.onclick=()=>{const a=document.createElement('a');a.href=f.data;a.download=f.name;a.click()};actions.append(dl);const del=document.createElement('button');del.className='btn btn-sm btn-outline-danger';del.textContent='Delete';del.onclick=()=>{if(confirm('Delete '+f.name+'?')){write('rdshareFiles',files().filter(x=>x.id!==f.id));render();counts()}};actions.append(del);row.append(actions);holder.append(row)});counts()}
+ function counts(){if($('#totalFiles'))$('#totalFiles').textContent=files().length;if($('#myFileCount'))$('#myFileCount').textContent=files().filter(f=>f.owner==='rishit').length}
+ $('#fileSearch')?.addEventListener('input',render);$('#adminSearch')?.addEventListener('input',render);
+ $('#fileUpload')?.addEventListener('change',async e=>{let all=files();for(const f of e.target.files){if(all.some(x=>x.owner==='rishit'&&x.name===f.name)){alert('A file with this name already exists.');continue}const data=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(f)});all.push({id:Date.now()+Math.random(),name:f.name,size:size(f.size),owner:'rishit',data})}write('rdshareFiles',all);e.target.value='';render()});
+ const ff=$('#folderForm');function folders(){const h=$('#folderList');if(!h)return;const a=read('rdshareFolders',[]);h.innerHTML='';if(!a.length)h.innerHTML='<p class="empty-state">No folders created yet.</p>';a.forEach((name,i)=>{const row=document.createElement('div');row.className='folder-row';const text=document.createElement('span');text.textContent='📁 '+name;const b=document.createElement('button');b.className='btn btn-sm btn-outline-danger';b.textContent='Delete';b.onclick=()=>{const next=read('rdshareFolders',[]);next.splice(i,1);write('rdshareFolders',next);folders()};row.append(text,b);h.append(row)})}
+ ff?.addEventListener('submit',e=>{e.preventDefault();const input=$('#folderName'),name=input.value.trim();if(!name)return;const a=read('rdshareFolders',[]);if(a.includes(name)){alert('Folder already exists.');return}a.push(name);write('rdshareFolders',a);input.value='';folders()});
+ const ut=$('#usersTable');if(ut){ut.innerHTML='<tr><td>admin</td><td>Administrator</td></tr><tr><td>rishit</td><td>Client</td></tr>'}
+ render();folders();counts();
+});

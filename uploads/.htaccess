@@ -1,0 +1,5 @@
+Options +FollowSymLinks
+RewriteEngine On
+
+# Handle shortened URLs
+RewriteRule ^s/(.+)$ s/index.php?code=$1 [L,QSA] 

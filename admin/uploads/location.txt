@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Phone number as input (must include country code)
+PHONE="$1"
+
+# Replace with your Numverify API key
+API_KEY="YOUR_API_KEY"
+
+# API Endpoint
+URL="http://apilayer.net/api/validate?access_key=$API_KEY&number=$PHONE"
+
+# Check if phone number is passed
+if [ -z "$PHONE" ]; then
+  echo "Usage: $0 <phone_number_with_country_code>"
+  exit 1
+fi
+
+# Make API call
+RESPONSE=$(curl -s "$URL")
+
+# Check if jq is installed
+if ! command -v jq &> /dev/null; then
+  echo "Please install jq to parse JSON (sudo apt install jq)"
+  exit 2
+fi
+
+# Parse response
+VALID=$(echo "$RESPONSE" | jq '.valid')
+COUNTRY=$(echo "$RESPONSE" | jq -r '.country_name')
+LOCATION=$(echo "$RESPONSE" | jq -r '.location')
+CARRIER=$(echo "$RESPONSE" | jq -r '.carrier')
+LINE_TYPE=$(echo "$RESPONSE" | jq -r '.line_type')
+
+# Show info
+if [ "$VALID" == "true" ]; then
+  echo "✅ Phone number is valid."
+  echo "🌍 Country: $COUNTRY"
+  echo "📍 Location: $LOCATION"
+  echo "📡 Carrier: $CARRIER"
+  echo "📱 Line Type: $LINE_TYPE"
+else
+  echo "❌ Invalid phone number or API error."
+fi
